@@ -3,22 +3,23 @@
 #include <cstdint>
 #include <string>
 
-typedef int16_t MAP_INT;
+using MAP_INT = int16_t;
+
+#ifdef _MSC_VER
+#define printf printf_s
+//#define fopen fopen_s
+#endif
 
 template <typename T>
 struct MapSquare
 {
     MapSquare() {}
-    MapSquare(int size)
-        : MapSquare()
-    {
-        resize(size);
-    }
+    MapSquare(int size) : MapSquare() { resize(size); }
     ~MapSquare()
     {
         if (data_)
         {
-            delete data_;
+            delete[] data_;
         }
     }
     //不会保留原始数据
@@ -26,7 +27,7 @@ struct MapSquare
     {
         if (data_)
         {
-            delete data_;
+            delete[] data_;
         }
         data_ = new T[x * x];
         line_ = x;
@@ -63,7 +64,7 @@ private:
     int line_ = 0;
 };
 
-typedef MapSquare<MAP_INT> MapSquareInt;
+using MapSquareInt = MapSquare<MAP_INT>;
 
 //前置声明
 struct Role;

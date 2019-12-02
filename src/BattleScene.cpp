@@ -16,10 +16,9 @@
 #include "ShowRoleDifference.h"
 #include "TeamMenu.h"
 #include "UIStatus.h"
-#include "Util.h"
 #include <algorithm>
+#include <cmath>
 #include <iostream>
-#include <math.h>
 #include <string>
 
 RandomDouble BattleScene::rng_;
@@ -29,36 +28,29 @@ BattleScene::BattleScene()
     full_window_ = 1;
     COORD_COUNT = BATTLEMAP_COORD_COUNT;
 
-    earth_layer_ = new MapSquareInt(COORD_COUNT);
-    building_layer_ = new MapSquareInt(COORD_COUNT);
-    select_layer_ = new MapSquareInt(COORD_COUNT);
-    effect_layer_ = new MapSquareInt(COORD_COUNT);
-    battle_menu_ = new BattleActionMenu();
+    earth_layer_.resize(COORD_COUNT);
+    building_layer_.resize(COORD_COUNT);
+    select_layer_.resize(COORD_COUNT);
+    effect_layer_.resize(COORD_COUNT);
 
-    role_layer_ = new MapSquare<Role*>(COORD_COUNT);
+    role_layer_.resize(COORD_COUNT);
 
-    battle_menu_->setBattleScene(this);
+    battle_menu_ = std::make_shared<BattleActionMenu>(this);
     battle_menu_->setPosition(160, 200);
-    head_self_ = new Head();
+    head_self_ = std::make_shared<Head>();
     addChild(head_self_);
-    battle_cursor_ = new BattleCursor();
-    battle_cursor_->setBattleScene(this);
+    battle_cursor_ = std::make_shared<BattleCursor>(this);
     save_ = Save::getInstance();
     semi_real_ = GameUtil::getInstance()->getInt("game", "semi_real", 0);
 }
 
-BattleScene::BattleScene(int id)
-    : BattleScene()
+BattleScene::BattleScene(int id) : BattleScene()
 {
     setID(id);
 }
 
 BattleScene::~BattleScene()
 {
-    delete battle_menu_;
-    delete battle_cursor_;
-    Util::safe_delete({ &earth_layer_, &building_layer_, &select_layer_, &effect_layer_ });
-    delete role_layer_;
 }
 
 void BattleScene::setID(int id)
@@ -66,12 +58,12 @@ void BattleScene::setID(int id)
     battle_id_ = id;
     info_ = BattleMap::getInstance()->getBattleInfo(id);
 
-    BattleMap::getInstance()->copyLayerData(info_->BattleFieldID, 0, earth_layer_);
-    BattleMap::getInstance()->copyLayerData(info_->BattleFieldID, 1, building_layer_);
+    BattleMap::getInstance()->copyLayerData(info_->BattleFieldID, 0, &earth_layer_);
+    BattleMap::getInstance()->copyLayerData(info_->BattleFieldID, 1, &building_layer_);
 
-    role_layer_->setAll(nullptr);
-    select_layer_->setAll(-1);
-    effect_layer_->setAll(-1);
+    role_layer_.setAll(nullptr);
+    select_layer_.setAll(-1);
+    effect_layer_.setAll(-1);
 }
 
 void BattleScene::draw()
@@ -111,12 +103,12 @@ void BattleScene::draw()
             p.y += y_;
             if (!isOutLine(ix, iy))
             {
-                int num = earth_layer_->data(ix, iy) / 2;
+                int num = earth_layer_.data(ix, iy) / 2;
                 BP_Color color = { 255, 255, 255, 255 };
                 bool need_draw = true;
                 if (need_change_earth_color_)
                 {
-                    if (select_layer_->data(ix, iy) < 0)
+                    if (select_layer_.data(ix, iy) < 0)
                     {
                         color = { 64, 64, 64, 255 };
                         need_draw = earth_texture_ == nullptr;
@@ -163,12 +155,12 @@ void BattleScene::draw()
             p.y += y_;
             if (!isOutLine(ix, iy))
             {
-                int num = building_layer_->data(ix, iy) / 2;
+                int num = building_layer_.data(ix, iy) / 2;
                 if (num > 0)
                 {
                     TextureManager::getInstance()->renderTexture("smap", num, p.x, p.y);
                 }
-                auto r = role_layer_->data(ix, iy);
+                auto r = role_layer_.data(ix, iy);
                 if (r)
                 {
                     std::string path = convert::formatString("fight/fight%03d", r->HeadID);
@@ -285,7 +277,7 @@ void BattleScene::dealEvent(BP_Event& e)
     select_x_ = role->X();
     select_y_ = role->Y();
     head_self_->setRole(role);
-    head_self_->setState(Element::Pass);
+    head_self_->setState(RunNode::Pass);
 
     //行动
     action(role);
@@ -345,7 +337,8 @@ void BattleScene::onEntrance()
     //注意此时才能得到窗口的大小，用来设置头像的位置
     head_self_->setPosition(80, 100);
 
-    Element::addOnRootTop(MainScene::getInstance()->getWeather());
+    //RunElement::addOnRootTop(MainScene::getInstance()->getWeather());
+    addChild(MainScene::getInstance()->getWeather());
 
     //earth_texture_ = Engine::getInstance()->createARGBRenderedTexture(COORD_COUNT * TILE_W * 2, COORD_COUNT * TILE_H * 2);
     //Engine::getInstance()->setRenderTarget(earth_texture_);
@@ -355,7 +348,7 @@ void BattleScene::onEntrance()
     //    for (int i2 = 0; i2 < COORD_COUNT; i2++)
     //    {
     //        auto p = getPositionOnWholeEarth(i1, i2);
-    //        int num = earth_layer_->data(i1, i2) / 2;
+    //        int num = earth_layer_.data(i1, i2) / 2;
     //        //无高度地面
     //        if (num > 0)
     //        {
@@ -384,7 +377,7 @@ void BattleScene::onExit()
     {
         r->setRolePositionLayer(nullptr);
     }
-    Element::removeFromRoot(MainScene::getInstance()->getWeather());
+    //RunElement::removeFromRoot(MainScene::getInstance()->getWeather());
     if (earth_texture_)
     {
         Engine::destroyTexture(earth_texture_);
@@ -426,7 +419,7 @@ void BattleScene::readBattleInfo()
         //设置全部角色的位置层，避免今后出错
         for (auto r : Save::getInstance()->getRoles())
         {
-            r->setRolePositionLayer(role_layer_);
+            r->setRolePositionLayer(&role_layer_);
             r->Team = 2;    //先全部设置成不存在的阵营
             r->Auto = 1;
         }
@@ -473,7 +466,7 @@ void BattleScene::readBattleInfo()
         //设置全部角色的位置层，避免今后出错
         for (auto r : Save::getInstance()->getRoles())
         {
-            r->setRolePositionLayer(role_layer_);
+            r->setRolePositionLayer(&role_layer_);
             r->Team = 2;    //先全部设置成不存在的阵营
             r->Auto = 1;
         }
@@ -510,11 +503,10 @@ void BattleScene::readBattleInfo()
         }
         else
         {
-            auto team_menu = new TeamMenu();
+            auto team_menu = std::make_shared<TeamMenu>();
             team_menu->setMode(1);
             team_menu->run();
             friends_ = team_menu->getRoles();
-            delete team_menu;
         }
         //队友
         for (int i = 0; i < friends_.size(); i++)
@@ -617,8 +609,8 @@ void BattleScene::readFightFrame(Role* r)
     {
         r->FightFrame[i] = 0;
     }
-    std::string file = convert::formatString("../game/resource/fight/fight%03d/fightframe.txt", r->HeadID);
-    std::string frame_txt = convert::readStringFromFile(file);
+    std::string text_group = convert::formatString("fight/fight%03d", r->HeadID);
+    std::string frame_txt = TextureManager::getInstance()->getTextureGroup(text_group)->getFileContent("fightframe.txt");
     std::vector<int> frames;
     convert::findNumbers(frame_txt, &frames);
     for (int i = 0; i < frames.size() / 2; i++)
@@ -633,17 +625,18 @@ void BattleScene::sortRoles()
     {
         std::sort(battle_roles_.begin(), battle_roles_.end(), [](Role* r1, Role* r2)
         {
-            return std::tie(r1->Speed, r1->ID) > std::tie(r2->Speed, r2->ID);
+            return std::make_tuple(r1->Speed, r1->ID, r1->X(), r1->Y()) > std::make_tuple(r2->Speed, r2->ID, r2->X(), r2->Y());
         });
     }
     else
     {
         std::sort(battle_roles_.begin(), battle_roles_.end(), [](Role* r1, Role* r2)
         {
-            return std::tie(r1->Progress, r1->ID) > std::tie(r2->Progress, r2->ID);
+            return std::make_tuple(r1->Progress, r1->ID, r1->X(), r2->Y()) > std::make_tuple(r2->Progress, r2->ID, r2->X(), r2->Y());
         });
     }
 }
+
 
 void BattleScene::resetRolesAct()
 {
@@ -710,9 +703,9 @@ void BattleScene::calSelectLayer(int x, int y, int team, int mode, int step /*= 
 {
     if (mode == 0)
     {
-        select_layer_->setAll(-1);
+        select_layer_.setAll(-1);
         std::vector<Point> cal_stack;
-        select_layer_->data(x, y) = step;
+        select_layer_.data(x, y) = step;
         cal_stack.push_back({ x, y });
         int count = 0;
         while (step >= 0)
@@ -721,9 +714,9 @@ void BattleScene::calSelectLayer(int x, int y, int team, int mode, int step /*= 
             auto check_next = [&](Point p1) -> void
             {
                 //未计算过且可以走的格子参与下一步的计算
-                if (select_layer_->data(p1.x, p1.y) == -1 && canWalk(p1.x, p1.y))
+                if (select_layer_.data(p1.x, p1.y) == -1 && canWalk(p1.x, p1.y))
                 {
-                    select_layer_->data(p1.x, p1.y) = step - 1;
+                    select_layer_.data(p1.x, p1.y) = step - 1;
                     cal_stack_next.push_back(p1);
                     count++;
                 }
@@ -758,13 +751,13 @@ void BattleScene::calSelectLayer(int x, int y, int team, int mode, int step /*= 
         {
             for (int iy = 0; iy < COORD_COUNT; iy++)
             {
-                select_layer_->data(ix, iy) = step - calDistance(ix, iy, x, y);
+                select_layer_.data(ix, iy) = step - calDistance(ix, iy, x, y);
             }
         }
     }
     else if (mode == 2)
     {
-        select_layer_->setAll(0);
+        select_layer_.setAll(0);
     }
     else if (mode == 3)
     {
@@ -776,20 +769,20 @@ void BattleScene::calSelectLayer(int x, int y, int team, int mode, int step /*= 
                 int dy = abs(iy - y);
                 if (dx == 0 && dy <= step || dy == 0 && dx <= step)
                 {
-                    select_layer_->data(ix, iy) = 0;
+                    select_layer_.data(ix, iy) = 0;
                 }
                 else
                 {
-                    select_layer_->data(ix, iy) = -1;
+                    select_layer_.data(ix, iy) = -1;
                 }
             }
         }
-        select_layer_->data(x, y) = -1;
+        select_layer_.data(x, y) = -1;
     }
     else
     {
-        select_layer_->setAll(-1);
-        select_layer_->data(x, y) = 0;
+        select_layer_.setAll(-1);
+        select_layer_.data(x, y) = 0;
     }
 }
 
@@ -816,12 +809,12 @@ void BattleScene::calSelectLayerByMagic(int x, int y, int team, Magic* magic, in
 
 void BattleScene::calEffectLayer(int x, int y, int select_x, int select_y, Magic* m /*= nullptr*/, int level_index /*= 0*/)
 {
-    effect_layer_->setAll(-1);
+    effect_layer_.setAll(-1);
 
     //若未指定武学，则认为只选择一个点
     if (m == nullptr || m->AttackAreaType == 0)
     {
-        effect_layer_->data(select_x, select_y) = 0;
+        effect_layer_.data(select_x, select_y) = 0;
         return;
     }
 
@@ -836,7 +829,7 @@ void BattleScene::calEffectLayer(int x, int y, int select_x, int select_y, Magic
             {
                 if (!isOutLine(ix, iy) && (x == ix || y == iy) && calTowards(x, y, ix, iy) == tw)
                 {
-                    effect_layer_->data(ix, iy) = 0;
+                    effect_layer_.data(ix, iy) = 0;
                 }
             }
         }
@@ -850,7 +843,7 @@ void BattleScene::calEffectLayer(int x, int y, int select_x, int select_y, Magic
             {
                 if (!isOutLine(ix, iy) && (x == ix || y == iy))
                 {
-                    effect_layer_->data(ix, iy) = 0;
+                    effect_layer_.data(ix, iy) = 0;
                 }
             }
         }
@@ -864,7 +857,7 @@ void BattleScene::calEffectLayer(int x, int y, int select_x, int select_y, Magic
             {
                 if (!isOutLine(ix, iy))
                 {
-                    effect_layer_->data(ix, iy) = 0;
+                    effect_layer_.data(ix, iy) = 0;
                 }
             }
         }
@@ -889,7 +882,7 @@ bool BattleScene::inEffect(Role* r1, Role* r2)
 
 bool BattleScene::canSelect(int x, int y)
 {
-    return (!isOutLine(x, y) && select_layer_->data(x, y) >= 0);
+    return (!isOutLine(x, y) && select_layer_.data(x, y) >= 0);
 }
 
 void BattleScene::walk(Role* r, int x, int y, Towards t)
@@ -914,12 +907,12 @@ bool BattleScene::canWalk(int x, int y)
 
 bool BattleScene::isBuilding(int x, int y)
 {
-    return building_layer_->data(x, y) > 0;
+    return building_layer_.data(x, y) > 0;
 }
 
 bool BattleScene::isWater(int x, int y)
 {
-    int num = earth_layer_->data(x, y) / 2;
+    int num = earth_layer_.data(x, y) / 2;
     if (num >= 179 && num <= 181 || num == 261 || num == 511 || num >= 662 && num <= 665 || num == 674)
     {
         return true;
@@ -929,7 +922,7 @@ bool BattleScene::isWater(int x, int y)
 
 bool BattleScene::isRole(int x, int y)
 {
-    return role_layer_->data(x, y);
+    return role_layer_.data(x, y);
 }
 
 bool BattleScene::isOutScreen(int x, int y)
@@ -951,7 +944,7 @@ bool BattleScene::isNearEnemy(int team, int x, int y)
 
 Role* BattleScene::getSelectedRole()
 {
-    return role_layer_->data(select_x_, select_y_);
+    return role_layer_.data(select_x_, select_y_);
 }
 
 void BattleScene::action(Role* r)
@@ -1071,7 +1064,7 @@ void BattleScene::actMove(Role* r)
 
 void BattleScene::actUseMagic(Role* r)
 {
-    BattleMagicMenu magic_menu;
+    auto magic_menu = std::make_shared<BattleMagicMenu>();
     while (true)
     {
         Magic* magic = nullptr;
@@ -1081,10 +1074,10 @@ void BattleScene::actUseMagic(Role* r)
         }
         else
         {
-            magic_menu.setStartItem(r->SelectedMagic);
-            magic_menu.runAsRole(r);
-            magic = magic_menu.getMagic();
-            r->SelectedMagic = magic_menu.getResult();
+            magic_menu->setStartItem(r->SelectedMagic);
+            magic_menu->runAsRole(r);
+            magic = magic_menu->getMagic();
+            r->SelectedMagic = magic_menu->getResult();
         }
         if (magic == nullptr)
         {
@@ -1270,11 +1263,11 @@ void BattleScene::actMedicine(Role* r)
 void BattleScene::actUseHiddenWeapon(Role* r)
 {
     // 网络交流，不管物品
-    BattleItemMenu item_menu;
-    item_menu.setRole(r);
-    item_menu.setForceItemType(3);
-    item_menu.runAtPosition(300, 0);
-    auto item = item_menu.getCurrentItem();
+    auto item_menu = std::make_shared<BattleItemMenu>();
+    item_menu->setRole(r);
+    item_menu->setForceItemType(3);
+    item_menu->runAtPosition(300, 0);
+    auto item = item_menu->getCurrentItem();
     if (item)
     {
         calSelectLayer(r, 1, calActionStep(r->HiddenWeapon));
@@ -1293,7 +1286,7 @@ void BattleScene::actUseHiddenWeapon(Role* r)
                 r2->addShowString(convert::formatString("-%d", v), { 255, 20, 20, 255 });
             }
             r->PhysicalPower = GameUtil::limit(r->PhysicalPower - 5, 0, Role::getMaxValue()->PhysicalPower);
-            item_menu.addItem(item, -1);
+            item_menu->addItem(item, -1);
             r->ExpGot += v;
             r->Acted = 1;
             actionAnimation_ = [this, item, r, r2]()
@@ -1314,26 +1307,25 @@ void BattleScene::actUseHiddenWeapon(Role* r)
 void BattleScene::actUseDrug(Role* r)
 {
     // 网络交流，不管物品
-    BattleItemMenu item_menu;
-    item_menu.setForceItemType(2);
-    item_menu.setRole(r);
-    item_menu.runAtPosition(300, 0);
-
-    auto item = item_menu.getCurrentItem();
+    auto item_menu = std::make_shared<BattleItemMenu>();
+    item_menu->setForceItemType(2);
+    item_menu->setRole(r);
+    item_menu->runAtPosition(300, 0);
+    auto item = item_menu->getCurrentItem();
     if (item)
     {
         Role r0 = *r;
         GameUtil::useItem(r, item);
-        item_menu.addItem(item, -1);
+        item_menu->addItem(item, -1);
         r->Acted = 1;
         actionAnimation_ = [this, r, r0, item]() mutable
         {
-            ShowRoleDifference df(&r0, r);
-            df.setText(convert::formatString("%s服用%s", r->Name, item->Name));
-            df.setShowHead(false);
-            df.setPosition(250, 220);
-            df.setStayFrame(40);
-            df.run();
+            auto df = std::make_shared<ShowRoleDifference>(&r0, r);
+            df->setText(convert::formatString("%s服用%s", r->Name, item->Name));
+            df->setShowHead(false);
+            df->setPosition(250, 220);
+            df->setStayFrame(40);
+            df->run();
         };
     }
 }
@@ -1392,7 +1384,7 @@ void BattleScene::moveAnimation(Role* r, int x, int y)
     std::vector<Point> way;
     auto check_next = [&](Point p1, int step) -> bool
     {
-        if (canSelect(p1.x, p1.y) && select_layer_->data(p1.x, p1.y) == step)
+        if (canSelect(p1.x, p1.y) && select_layer_.data(p1.x, p1.y) == step)
         {
             way.push_back(p1);
             return true;
@@ -1401,7 +1393,7 @@ void BattleScene::moveAnimation(Role* r, int x, int y)
     };
 
     way.push_back({ x, y });
-    for (int i = select_layer_->data(x, y); i < select_layer_->data(r->X(), r->Y()); i++)
+    for (int i = select_layer_.data(x, y); i < select_layer_.data(r->X(), r->Y()); i++)
     {
         int x1 = way.back().x, y1 = way.back().y;
         if (check_next({ x1 - 1, y1 }, i + 1))
@@ -1435,7 +1427,7 @@ void BattleScene::moveAnimation(Role* r, int x, int y)
     }
     r->setPosition(x, y);
     r->Moved = 1;
-    select_layer_->setAll(-1);
+    select_layer_.setAll(-1);
 }
 
 //使用武学动画
@@ -1503,6 +1495,8 @@ void BattleScene::actionAnimation(Role* r, int style, int effect_id, int shake /
         }
     }
 
+    //int x0, y0;
+    //Engine::getInstance()->getWindowPosition(x0, y0);
     for (effect_frame_ = -min_dis; effect_frame_ < effect_count + max_dis + 1; effect_frame_++)
     {
         if (exit_)
@@ -1513,9 +1507,11 @@ void BattleScene::actionAnimation(Role* r, int style, int effect_id, int shake /
         {
             x_ = rng_.rand_int(shake) - rng_.rand_int(shake);
             y_ = rng_.rand_int(shake) - rng_.rand_int(shake);
+            //Engine::getInstance()->setWindowPosition(x0 + x_ * 10, y0 + y_ * 10);
         }
         drawAndPresent(animation_delay_);
     }
+    //Engine::getInstance()->setWindowPosition(x0, y0);
     action_frame_ = 0;
     action_type_ = -1;
     effect_frame_ = 0;
@@ -1659,13 +1655,12 @@ int BattleScene::calHiddenWeaponHurt(Role* r1, Role* r2, Item* item)
 
 void BattleScene::showMagicName(std::string name)
 {
-    auto magic_name = new TextBox();
+    auto magic_name = std::make_shared<TextBox>();
     magic_name->setText(name);
     magic_name->setPosition(450, 150);
     magic_name->setFontSize(20);
     magic_name->setStayFrame(40);
     magic_name->run();
-    delete magic_name;
 }
 
 //显示数字，同时显示打退进度条
@@ -1750,7 +1745,7 @@ void BattleScene::showNumberAnimation(int delay, bool floating, const std::vecto
 
 void BattleScene::renderExtraRoleInfo(Role* r, int x, int y)
 {
-    if (r == nullptr || r->HP <= 0)
+    if (r == nullptr)
     {
         return;
     }
@@ -1762,17 +1757,25 @@ void BattleScene::renderExtraRoleInfo(Role* r, int x, int y)
         // 敌方红色
         background_color = { 255, 0, 0, 128 };
     }
-    int hp_x = x - 20;
-    int hp_y = y - 63;
-    int hp_max_w = 40;
+    int hp_max_w = 24;
+    int hp_x = x - hp_max_w / 2;
+    int hp_y = y - 60;
     int hp_h = 3;
     double perc = ((double)r->HP / r->MaxHP);
     if (perc < 0)
     {
         perc = 0;
     }
-    BP_Rect r1 = { hp_x, hp_y, perc * hp_max_w, hp_h };
-    Engine::getInstance()->renderSquareTexture(&r1, background_color, 192);
+
+    double alpha = 1;
+    if (r->HP <= 0)
+    {
+        alpha = dead_alpha_ / 255.0;
+    }
+    BP_Rect r0 = { hp_x, hp_y, hp_max_w, hp_h };
+    Engine::getInstance()->renderSquareTexture(&r0, outline_color, 128 * alpha);
+    BP_Rect r1 = { hp_x, hp_y, int(perc * hp_max_w), hp_h };
+    Engine::getInstance()->renderSquareTexture(&r1, background_color, 192 * alpha);
 
     //Engine::getInstance()->fillColor(background_color, hp_x, hp_y, perc * hp_max_w, hp_h);
     // 严禁吐槽，画框框
@@ -1904,13 +1907,12 @@ void BattleScene::calExpGot()
         r->ExpGot += info_->Exp / alive_teammate.size();
     }
 
-    auto show_exp = new ShowExp();
+    auto show_exp = std::make_shared<ShowExp>();
     show_exp->setRoles(alive_teammate);
     show_exp->run();
-    delete show_exp;
 
     //升级，修炼物品
-    auto diff = new ShowRoleDifference();
+    auto diff = std::make_shared<ShowRoleDifference>();
     for (auto r : alive_teammate)
     {
         if (exit_)
@@ -1997,7 +1999,6 @@ void BattleScene::calExpGot()
             }
         }
     }
-    delete diff;
 }
 
 void BattleScene::setupNetwork(std::unique_ptr<BattleNetwork> net, int battle_id)
@@ -2015,23 +2016,23 @@ void BattleScene::receiveAction(Role* r)
     {
         Font::getInstance()->draw("等待对方玩家行动...", 40, 30, 30, { 200, 200, 50, 255 });
     };
-    DrawableOnCall waitThis(f);
+    auto waitThis = std::make_shared<DrawableOnCall>(f);
     // getOpponentAction读取完毕会调用此函数关闭显示
     auto exit = [&waitThis, this](std::error_code err, std::size_t bytes)
     {
         printf("recv %s\n", err.message().c_str());
-        waitThis.setExit(true);
+        waitThis->setExit(true);
         if (err)
         {
             this->setExit(true);
         }
     };
     // 打开后既开始获取数据
-    waitThis.setEntrance([this, &action, exit]()
+    waitThis->setEntrance([this, &action, exit]()
     {
         network_->getOpponentAction(action, exit);
     });
-    waitThis.run();
+    waitThis->run();
     // 这里返回后，就已经获得action
     action.print();
     r->Network_Action = action.Action;

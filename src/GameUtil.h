@@ -1,8 +1,8 @@
 #pragma once
+#include "INIReader.h"
 #include "Types.h"
 #include <climits>
 #include <cmath>
-#include "INIReader.h"
 
 //此类中是一些游戏中的公式，例如使用物品的效果，伤害公式等
 //通常来说应该全部是静态函数
@@ -20,7 +20,11 @@ public:
         return &gu;
     }
 
-    static const std::string& VERSION();
+    static const std::string& VERSION()
+    {
+        static std::string v = "";
+        return v;
+    }
 
     static int sign(int v)
     {

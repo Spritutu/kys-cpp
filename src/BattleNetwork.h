@@ -1,12 +1,15 @@
 #pragma once
 
+#ifdef WITH_NETWORK
 #include "asio.hpp"
+#endif
 
 #include "BattleMenu.h"
 #include "GameUtil.h"
 
 #include <array>
 #include <memory>
+#include <system_error>
 #include <thread>
 
 // 使用方法
@@ -16,19 +19,14 @@
 // 4. 在某非阻塞ui中调用handshake
 // 5. handshake结束后回调，关闭ui组件
 
+#ifdef WITH_NETWORK
 class BattleNetwork
 {
 public:
     static const std::size_t VALSIZE = 32;
 
     // , strand_(io_context_)
-    BattleNetwork(const std::string& strID, const std::string& port)
-        : socket_(io_context_)
-        , resolver_(io_context_)
-        , work_(io_context_)
-        , strID_(strID)
-        , port_(port)
-        , query_(GameUtil::getInstance()->getString("network", "server", "138.197.200.52"), port_) {};
+    BattleNetwork(const std::string& strID, const std::string& port) : socket_(io_context_), resolver_(io_context_), work_(io_context_), strID_(strID), port_(port), query_(GameUtil::getInstance()->getString("network", "server", "138.197.200.52"), port_) {};
 
     virtual ~BattleNetwork()
     {
@@ -82,7 +80,7 @@ protected:
 
     // 己方参战id，最终roles结果
     virtual void rDataHandshake() = 0;
-    virtual void validate(); 
+    virtual void validate();
 
     asio::io_context io_context_;
     asio::ip::tcp::resolver resolver_;
@@ -146,3 +144,33 @@ public:
 private:
     static bool UI(BattleNetwork* net);
 };
+#else
+//假的Network
+class BattleNetwork
+{
+public:
+    static const std::size_t VALSIZE = 32;
+    struct SerializableBattleAction
+    {
+        int Action;
+        int MoveX, MoveY;
+        int ActionX, ActionY;
+        int magicID = 0;
+        int itemID = -1;
+        void print() {}
+    };
+    bool sendMyAction(const BattleNetwork::SerializableBattleAction& action) { return false; }
+    bool getOpponentAction(BattleNetwork::SerializableBattleAction& action, std::function<void(std::error_code err, std::size_t bytes)> f) { return false; }
+    bool isHost() { return false; }
+    void addValidation(std::array<unsigned char, VALSIZE>&& bytes) {}
+    void handshake(std::vector<RoleSave>&& my_roles, std::function<void(std::error_code err)> f) {}
+    virtual void getResults(unsigned int& seed, int& friends, std::vector<RoleSave>& final_roles) {}
+};
+class BattleNetworkFactory
+{
+public:
+    // 等待连接
+    static std::unique_ptr<BattleNetwork> MakeHost(const std::string& id) { return nullptr; }
+    static std::unique_ptr<BattleNetwork> MakeClient(const std::string& id) { return nullptr; }
+};
+#endif

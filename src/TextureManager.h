@@ -1,5 +1,6 @@
 #pragma once
 #include "Engine.h"
+#include "ZipFile.h"
 #include <map>
 #include <vector>
 
@@ -18,7 +19,7 @@ struct Texture
     int w = 0, h = 0, dx = 0, dy = 0;
     bool loaded = false;
     int count = 1;
-    ~Texture() { destory(); }
+    int prev_show;
     void setTex(BP_Texture* t)
     {
         destory();
@@ -42,31 +43,41 @@ private:
     }
 };
 
+struct TextureGroup : public std::vector<Texture*>
+{
+    friend class TextureManager;
+
+public:
+    int inited_ = 0;
+    ZipFile zip_;
+    ZipFile* getZip() { return &zip_; }
+    std::string path_;
+    const std::string& getPath() { return path_; }
+    std::string getFileContent(const std::string& filename);
+
+protected:
+    void init(const std::string& path, int load_from_path, int load_all);
+    void loadTexture(int num, Texture* t);
+};
+
 class TextureManager
 {
 private:
     TextureManager();
     virtual ~TextureManager();
     std::string path_ = "../game/resource/";
+    int load_from_path_ = 0;    //0 - 先尝试读取zip，如没有则读取目录；1 - 不尝试读取zip，直接读取目录
+    int load_all_ = 0;
+    std::map<const std::string, TextureGroup> map_;
 
 public:
-    enum Type
-    {
-        MainMap = 0,
-        Scene,
-        Battle,
-        Cloud,
-        MaxType
-    };
-
-    std::map<const std::string, std::vector<Texture*>> map_;
-
     static TextureManager* getInstance()
     {
         static TextureManager tm;
         return &tm;
     }
 
+public:
     void renderTexture(Texture* tex, BP_Rect r,
         BP_Color c = { 255, 255, 255, 255 }, uint8_t alpha = 255);
     void renderTexture(const std::string& path, int num, BP_Rect r,
@@ -79,8 +90,7 @@ public:
 
     Texture* loadTexture(const std::string& path, int num);
     int getTextureGroupCount(const std::string& path);
-private:
-    void initialTextureGroup(const std::string& path, bool load_all = false);
-    void loadTexture2(const std::string& path, int num, Texture* t);
+    TextureGroup* getTextureGroup(const std::string& path);
+    void setLoadFromPath(int l) { load_from_path_ = l; }
+    void setLoadAll(int l) { load_all_ = l; }
 };
-

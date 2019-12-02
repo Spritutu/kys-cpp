@@ -7,16 +7,16 @@ TeamMenu::TeamMenu()
 {
     for (int i = 0; i < TEAMMATE_COUNT; i++)
     {
-        auto h = new Head();
+        auto h = std::make_shared<Head>();
+        addChild(h, i % 2 * 250, i / 2 * 100);
         h->setHaveBox(false);
         //h->setOnlyHead(true);
         heads_.push_back(h);
-        addChild(h, i % 2 * 250, i / 2 * 100);
         //selected_.push_back(0);
     }
-    button_all_ = new Button();
+    button_all_ = std::make_shared<Button>();
     button_all_->setText("È«ßx");
-    button_ok_ = new Button();
+    button_ok_ = std::make_shared<Button>();
     button_ok_->setText("´_¶¨");
     addChild(button_all_, 0, 300);
     addChild(button_ok_, 100, 300);

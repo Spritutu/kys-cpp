@@ -1,10 +1,11 @@
 
 //一些辅助的功能
+//一些常数的设置比较不合理，建议以调试模式手动执行
 
 #include "File.h"
 #include "GrpIdxFile.h"
 #include "TypesABC.h"
-#include "libconvert.h"
+#include "convert.h"
 
 //转换二进制文件为文本
 void trans_bin_list(std::string in, std::string out)
@@ -15,7 +16,7 @@ void trans_bin_list(std::string in, std::string out)
     std::string s;
     for (auto a : leave_list)
     {
-        convert::formatAppendString(s, "%d, ", a);
+        s += convert::formatString("%d, ", a);
     }
     convert::writeStringToFile(s, out);
 }
@@ -38,7 +39,7 @@ void trans_fight_frame()
                 if (frame[j] > 0)
                 {
                     printf("%d, %d\n", j, frame[j]);
-                    convert::formatAppendString(content, "%d, %d\r\n", j, frame[j]);
+                    content += convert::formatString(content.c_str(), "%d, %d\r\n", j, frame[j]);
                 }
             }
             convert::writeStringToFile(content, path + "/fightframe.txt");
@@ -55,7 +56,8 @@ int expandR(std::string idx, std::string grp, bool ranger = true)
     }
 
     std::vector<int> offset1, length1, offset2, length2;
-    auto rgrp1 = GrpIdxFile::getIdxContent(idx, grp, &offset1, &length1);
+    auto rgrp1_str = GrpIdxFile::getIdxContent(idx, grp, &offset1, &length1);
+    auto rgrp1 = rgrp1_str.c_str();
     offset2 = offset1;
     length2 = length1;
     for (auto& i : offset2)

@@ -5,20 +5,18 @@
 #include "Save.h"
 #include "ShowRoleDifference.h"
 #include "TeamMenu.h"
-#include "libconvert.h"
+#include "convert.h"
 
 UIStatus::UIStatus()
 {
-    menu_ = new Menu();
-    button_medicine_ = new Button();
+    menu_ = std::make_shared<Menu>();
+    button_medicine_ = std::make_shared<Button>();
     button_medicine_->setText("醫療");
     menu_->addChild(button_medicine_, 350, 55);
-
-    button_detoxification_ = new Button();
+    button_detoxification_ = std::make_shared<Button>();
     button_detoxification_->setText("解毒");
     menu_->addChild(button_detoxification_, 400, 55);
-
-    button_leave_ = new Button();
+    button_leave_ = std::make_shared<Button>();
     button_leave_->setText("離隊");
     menu_->addChild(button_leave_, 450, 55);
 
@@ -188,7 +186,6 @@ void UIStatus::draw()
         {
             int x1 = x + i % 2 * 200;
             int y1 = y + 30 + i / 2 * 25;
-
             str = convert::formatString("%s", magic->Name);
             font->draw(str, font_size, x1, y1, color_ability1);
             str = convert::formatString("%3d", role_->getRoleShowLearnedMagicLevel(i));
@@ -266,36 +263,32 @@ void UIStatus::onPressedOK()
 
     if (menu_->getResult() == 0)
     {
-        auto team_menu = new TeamMenu();
+        auto team_menu = std::make_shared<TeamMenu>();
         team_menu->setText(convert::formatString("%s要為誰醫療", role_->Name));
         team_menu->run();
         auto role = team_menu->getRole();
-        delete team_menu;
         if (role)
         {
             Role r = *role;
             GameUtil::medicine(role_, role);
-            auto df = new ShowRoleDifference(&r, role);
+            auto df = std::make_shared<ShowRoleDifference>(&r, role);
             df->setText(convert::formatString("%s接受%s醫療", role->Name, role_->Name));
             df->run();
-            delete df;
         }
     }
     else if (menu_->getResult() == 1)
     {
-        auto team_menu = new TeamMenu();
+        auto team_menu = std::make_shared<TeamMenu>();
         team_menu->setText(convert::formatString("%s要為誰解毒", role_->Name));
         team_menu->run();
         auto role = team_menu->getRole();
-        delete team_menu;
         if (role)
         {
             Role r = *role;
             GameUtil::detoxification(role_, role);
-            auto df = new ShowRoleDifference(&r, role);
+            auto df = std::make_shared<ShowRoleDifference>(&r, role);
             df->setText(convert::formatString("%s接受%s解毒", role->Name, role_->Name));
             df->run();
-            delete df;
         }
     }
     else if (menu_->getResult() == 2)

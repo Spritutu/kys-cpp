@@ -1,5 +1,4 @@
 #!/bin/bash
 
-git submodule init
-git submodule update --remote
+git clone https://github.com/scarsty/common common
 

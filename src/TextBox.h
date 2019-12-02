@@ -1,7 +1,7 @@
 #pragma once
-#include "Element.h"
+#include "RunNode.h"
 
-class TextBox : public Element
+class TextBox : public RunNode
 {
 public:
     TextBox() {}

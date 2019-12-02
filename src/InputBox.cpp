@@ -9,8 +9,7 @@ InputBox::InputBox()
 {
 }
 
-InputBox::InputBox(const std::string& title, int font_size)
-    : title_(title)
+InputBox::InputBox(const std::string& title, int font_size) : title_(title)
 {
     font_size_ = font_size;
 }
@@ -56,11 +55,11 @@ void InputBox::dealEvent(BP_Event& e)
     case BP_KEYUP:
         if (e.key.keysym.sym == BPK_RETURN)
         {
-            if (!text_.empty())
-            {
-                result_ = 0;
-                exit_ = true;
-            }
+            //if (!text_.empty())
+            //{
+            result_ = 0;
+            exit_ = true;
+            //}
         }
         break;
     }

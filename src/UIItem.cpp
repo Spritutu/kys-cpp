@@ -6,7 +6,7 @@
 #include "Save.h"
 #include "ShowRoleDifference.h"
 #include "TeamMenu.h"
-#include "libconvert.h"
+#include "convert.h"
 
 UIItem::UIItem()
 {
@@ -14,19 +14,19 @@ UIItem::UIItem()
 
     for (int i = 0; i < item_buttons_.size(); i++)
     {
-        auto b = new Button();
+        auto b = std::make_shared<Button>();
+        addChild(b);
         item_buttons_[i] = b;
         b->setPosition(i % item_each_line_ * 85 + 40, i / item_each_line_ * 85 + 100);
         //b->setTexture("item", Save::getInstance()->getItemByBagIndex(i)->ID);
-        addChild(b);
     }
-    title_ = new MenuText();
+    title_ = std::make_shared<MenuText>();
     title_->setStrings({ "劇情", "兵甲", "丹藥", "暗器", "拳經", "劍譜", "刀錄", "奇門", "心法" });
     title_->setFontSize(24);
     title_->arrange(0, 50, 64, 0);
     addChild(title_);
 
-    cursor_ = new TextBox();
+    cursor_ = std::make_shared<TextBox>();
     cursor_->setTexture("title", 127);
     cursor_->setVisible(false);
     addChild(cursor_);
@@ -112,7 +112,7 @@ void UIItem::checkCurrentItem()
     //强制停留在某类物品
     if (force_item_type_ >= 0)
     {
-        //title_->setResult(force_item_type_);
+        //title_.setResult(force_item_type_);
         title_->forceActiveChild(force_item_type_);
     }
     int active = title_->getActiveChildIndex();
@@ -130,6 +130,7 @@ void UIItem::checkCurrentItem()
     leftup_index_ = GameUtil::limit(leftup_index_, 0, max_leftup_);
 
     //计算被激活的按钮
+    std::shared_ptr<Button> current_button{ nullptr };
     for (int i = 0; i < item_buttons_.size(); i++)
     {
         auto button = item_buttons_[i];
@@ -145,24 +146,24 @@ void UIItem::checkCurrentItem()
         }
         if (button->getState() == Pass || button->getState() == Press)
         {
-            current_button_ = button;
+            current_button = button;
             //result_ = current_item_->ID;
         }
     }
 
     //计算被激活的按钮对应的物品
     current_item_ = nullptr;
-    if (current_button_)
+    if (current_button)
     {
         int x, y;
-        current_button_->getPosition(x, y);
-        current_item_ = Save::getInstance()->getItem(current_button_->getTexutreID());
+        current_button->getPosition(x, y);
+        current_item_ = Save::getInstance()->getItem(current_button->getTexutreID());
         //让光标显示出来
-        if (current_button_->getState() == Pass)
+        if (current_button->getState() == Pass)
         {
             x += 2;
         }
-        if (current_button_->getState() == Press)
+        if (current_button->getState() == Press)
         {
             y += 2;
         }
@@ -409,7 +410,16 @@ void UIItem::showOneProperty(int v, std::string format_str, int size, BP_Color c
 {
     if (v != 0)
     {
-        auto str = convert::formatString(format_str.c_str(), v);
+        std::string str;
+        int parameter_count = convert::extractFormatString(format_str).size();
+        if (parameter_count == 1)
+        {
+            str = convert::formatString(format_str.c_str(), v);
+        }
+        else if (parameter_count==0)
+        {
+            str = format_str;
+        }
         //测试是不是出界了
         int draw_length = size * str.size() / 2 + size;
         int x1 = x + draw_length;
@@ -451,26 +461,24 @@ void UIItem::onPressedOK()
     {
         if (current_item_->ItemType == 3)
         {
-            auto team_menu = new TeamMenu();
+            auto team_menu=std::make_shared<TeamMenu>();
             team_menu->setItem(current_item_);
             team_menu->setText(convert::formatString("誰要使用%s", current_item_->Name));
             team_menu->run();
             auto role = team_menu->getRole();
-            delete team_menu;
             if (role)
             {
                 Role r = *role;
                 GameUtil::useItem(role, current_item_);
-                auto df = new ShowRoleDifference(&r, role);
+                auto df=std::make_shared<ShowRoleDifference>(&r, role);
                 df->setText(convert::formatString("%s服用%s", role->Name, current_item_->Name));
                 df->run();
-                delete df;
                 Event::getInstance()->addItemWithoutHint(current_item_->ID, -1);
             }
         }
         else if (current_item_->ItemType == 1 || current_item_->ItemType == 2)
         {
-            auto team_menu = new TeamMenu();
+            auto team_menu = std::make_shared<TeamMenu>();
             team_menu->setItem(current_item_);
             auto format_str = "誰要修煉%s";
             if (current_item_->ItemType == 1)
@@ -480,7 +488,6 @@ void UIItem::onPressedOK()
             team_menu->setText(convert::formatString(format_str, current_item_->Name));
             team_menu->run();
             auto role = team_menu->getRole();
-            delete team_menu;
             if (role)
             {
                 GameUtil::equip(role, current_item_);

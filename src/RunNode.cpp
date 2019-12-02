@@ -1,24 +1,17 @@
-#include "Element.h"
+#include "RunNode.h"
 #include "Font.h"
 #include "UISystem.h"
 
-std::vector<Element*> Element::root_;
-int Element::prev_present_ticks_ = 0;
-int Element::refresh_interval_ = 16;
-int Element::render_message_ = 0;
+std::vector<std::shared_ptr<RunNode>> RunNode::root_;
+int RunNode::prev_present_ticks_ = 0;
+int RunNode::refresh_interval_ = 16;
+int RunNode::render_message_ = 0;
 
-Element::~Element()
+RunNode::~RunNode()
 {
-    for (auto c : childs_)
-    {
-        if (c)
-        {
-            delete c;
-        }
-    }
 }
 
-void Element::drawAll()
+void RunNode::drawAll()
 {
     //从最后一个独占屏幕的场景开始画
     int begin_base = 0;
@@ -38,7 +31,7 @@ void Element::drawAll()
 }
 
 //设置位置，会改变子节点的位置
-void Element::setPosition(int x, int y)
+void RunNode::setPosition(int x, int y)
 {
     for (auto c : childs_)
     {
@@ -49,7 +42,7 @@ void Element::setPosition(int x, int y)
 }
 
 //从绘制的根节点移除
-Element* Element::removeFromRoot(Element* element)
+std::shared_ptr<RunNode> RunNode::removeFromDraw(std::shared_ptr<RunNode> element)
 {
     if (element == nullptr)
     {
@@ -76,21 +69,21 @@ Element* Element::removeFromRoot(Element* element)
 }
 
 //添加子节点
-void Element::addChild(Element* element)
+void RunNode::addChild(std::shared_ptr<RunNode> element)
 {
     element->setTag(childs_.size());
     childs_.push_back(element);
 }
 
 //添加节点并同时设置子节点的位置
-void Element::addChild(Element* element, int x, int y)
+void RunNode::addChild(std::shared_ptr<RunNode> element, int x, int y)
 {
     addChild(element);
     element->setPosition(x_ + x, y_ + y);
 }
 
 //移除某个节点
-void Element::removeChild(Element* element)
+void RunNode::removeChild(std::shared_ptr<RunNode> element)
 {
     for (int i = 0; i < childs_.size(); i++)
     {
@@ -103,17 +96,13 @@ void Element::removeChild(Element* element)
 }
 
 //清除子节点
-void Element::clearChilds()
+void RunNode::clearChilds()
 {
-    for (auto c : childs_)
-    {
-        delete c;
-    }
     childs_.clear();
 }
 
 //画出自身和子节点
-void Element::drawSelfChilds()
+void RunNode::drawSelfChilds()
 {
     if (visible_)
     {
@@ -128,7 +117,7 @@ void Element::drawSelfChilds()
     }
 }
 
-void Element::setAllChildState(int s)
+void RunNode::setAllChildState(int s)
 {
     for (auto c : childs_)
     {
@@ -136,7 +125,7 @@ void Element::setAllChildState(int s)
     }
 }
 
-void Element::setAllChildVisible(bool v)
+void RunNode::setAllChildVisible(bool v)
 {
     for (auto c : childs_)
     {
@@ -144,7 +133,7 @@ void Element::setAllChildVisible(bool v)
     }
 }
 
-int Element::findNextVisibleChild(int i0, Direct direct)
+int RunNode::findNextVisibleChild(int i0, Direct direct)
 {
     if (direct == None || childs_.size() == 0)
     {
@@ -199,7 +188,7 @@ int Element::findNextVisibleChild(int i0, Direct direct)
     return i1;
 }
 
-int Element::findFristVisibleChild()
+int RunNode::findFristVisibleChild()
 {
     for (int i = 0; i < childs_.size(); i++)
     {
@@ -211,7 +200,7 @@ int Element::findFristVisibleChild()
     return -1;
 }
 
-void Element::checkFrame()
+void RunNode::checkFrame()
 {
     if (stay_frame_ > 0 && current_frame_ >= stay_frame_)
     {
@@ -222,7 +211,7 @@ void Element::checkFrame()
 //处理自身的事件响应
 //只处理当前的节点和当前节点的子节点，检测鼠标是否在范围内
 //注意全屏类的节点要一直接受事件
-void Element::checkStateSelfChilds(BP_Event& e, bool check_event)
+void RunNode::checkStateSelfChilds(BP_Event& e, bool check_event)
 {
     //if (exit_) { return; }
     if (visible_ || full_window_)
@@ -265,7 +254,7 @@ void Element::checkStateSelfChilds(BP_Event& e, bool check_event)
     }
 }
 
-void Element::backRunSelfChilds()
+void RunNode::backRunSelfChilds()
 {
     for (auto c : childs_)
     {
@@ -275,7 +264,7 @@ void Element::backRunSelfChilds()
 }
 
 //检测事件
-void Element::dealEventSelfChilds(bool check_event)
+void RunNode::dealEventSelfChilds(bool check_event)
 {
     if (check_event)
     {
@@ -310,7 +299,7 @@ void Element::dealEventSelfChilds(bool check_event)
 }
 
 //是否为游戏需要处理的类型，避免丢失一些操作
-bool Element::isSpecialEvent(BP_Event& e)
+bool RunNode::isSpecialEvent(BP_Event& e)
 {
     return e.type == BP_MOUSEBUTTONDOWN
         || e.type == BP_MOUSEBUTTONUP
@@ -320,7 +309,7 @@ bool Element::isSpecialEvent(BP_Event& e)
         || e.type == BP_TEXTEDITING;
 }
 
-void Element::forceActiveChild()
+void RunNode::forceActiveChild()
 {
     for (int i = 0; i < childs_.size(); i++)
     {
@@ -333,7 +322,7 @@ void Element::forceActiveChild()
 }
 
 //检测
-void Element::checkActiveToResult()
+void RunNode::checkActiveToResult()
 {
     result_ = -1;
     int r = checkChildState();
@@ -344,7 +333,7 @@ void Element::checkActiveToResult()
 }
 
 //获取子节点的状态
-int Element::checkChildState()
+int RunNode::checkChildState()
 {
     int r = -1;
     for (int i = 0; i < getChildCount(); i++)
@@ -357,7 +346,7 @@ int Element::checkChildState()
     return r;
 }
 
-void Element::checkSelfState(BP_Event& e)
+void RunNode::checkSelfState(BP_Event& e)
 {
     //检测鼠标经过，按下等状态
     //注意BP_MOUSEMOTION在mac下面有些问题，待查
@@ -393,15 +382,15 @@ void Element::checkSelfState(BP_Event& e)
     }
 }
 
-void Element::present()
+void RunNode::present()
 {
     int t = Engine::getTicks() - prev_present_ticks_;
 
     if (render_message_)
     {
         auto e = Engine::getInstance();
-        Font::getInstance()->draw("Render one frame in " + std::to_string(t) + "ms", 20, e->getWindowWidth() - 300, e->getWindowHeight() - 60);
-        Font::getInstance()->draw("RenderCopy times: " + std::to_string(Engine::getInstance()->getRenderTimes()), 20, e->getWindowWidth() - 300, e->getWindowHeight() - 30);
+        Font::getInstance()->draw("Render one frame in " + std::to_string(t) + " ms", 20, e->getWindowWidth() - 300, e->getWindowHeight() - 60);
+        Font::getInstance()->draw("RenderCopy time is " + std::to_string(Engine::getInstance()->getRenderTimes()), 20, e->getWindowWidth() - 300, e->getWindowHeight() - 35);
         e->resetRenderTimes();
     }
     Engine::getInstance()->renderPresent();
@@ -419,13 +408,13 @@ void Element::present()
 }
 
 //运行本节点，参数为是否在root中运行，为真则参与绘制，为假则不会被画出
-int Element::run(bool in_root /*= true*/)
+int RunNode::run(bool in_root /*= true*/)
 {
     exit_ = false;
     visible_ = true;
     if (in_root)
     {
-        addOnRootTop(this);
+        addIntoDrawTop(shared_from_this());
     }
     onEntrance();
     running_ = true;
@@ -452,12 +441,12 @@ int Element::run(bool in_root /*= true*/)
     onExit();
     if (in_root)
     {
-        removeFromRoot(this);
+        removeFromDraw(shared_from_this());
     }
     return result_;
 }
 
-void Element::exitAll(int begin)
+void RunNode::exitAll(int begin)
 {
     for (int i = begin; i < root_.size(); i++)
     {
@@ -468,7 +457,7 @@ void Element::exitAll(int begin)
 
 //专门用来某些情况下动画的显示和延时
 //中间可以插入一个函数补充些什么，想不到更好的方法了
-int Element::drawAndPresent(int times, std::function<void(void*)> func, void* data)
+int RunNode::drawAndPresent(int times, std::function<void(void*)> func, void* data)
 {
     if (times < 1)
     {

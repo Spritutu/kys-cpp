@@ -5,6 +5,7 @@
 #include "GameUtil.h"
 #include "INIReader.h"
 #include "Random.h"
+#include "TextureManager.h"
 #include "TitleScene.h"
 
 Application::Application()
@@ -24,9 +25,8 @@ int Application::run()
 
     config();
 
-    auto s = new TitleScene();    //开始界面
+    auto s = std::make_shared<TitleScene>();    //开始界面
     s->run();
-    delete s;
 
     return 0;
 }
@@ -34,9 +34,11 @@ int Application::run()
 void Application::config()
 {
     auto game = GameUtil::getInstance();
-    Element::setRefreshInterval(game->getInt("game", "refresh_interval", 16));
+    RunNode::setRefreshInterval(game->getInt("game", "refresh_interval", 16));
     Audio::getInstance()->setVolume(game->getInt("music", "volume", 50));
     Event::getInstance()->setUseScript(game->getInt("game", "use_script", 0));
     Font::getInstance()->setStatMessage(game->getInt("game", "stat_font", 0));
     Engine::getInstance()->setWindowTitle(game->getString("game", "title", "All Heroes in Kam Yung Stories"));
+    TextureManager::getInstance()->setLoadFromPath(game->getInt("game", "png_from_path", 0));
+    TextureManager::getInstance()->setLoadAll(game->getInt("game", "load_all_png", 0));
 }

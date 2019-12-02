@@ -4,18 +4,17 @@
 #include "PotConv.h"
 #include "Random.h"
 #include "Save.h"
-#include "libconvert.h"
+#include "convert.h"
 
-BattleActionMenu::BattleActionMenu()
+BattleActionMenu::BattleActionMenu(BattleScene* b)
 {
     setStrings({ "移動", "武學", "用毒", "解毒", "醫療", "暗器", "藥品", "等待", "狀態", "自動", "結束" });
-    distance_layer_ = new MapSquareInt();
-    distance_layer_->resize(BATTLEMAP_COORD_COUNT);
+    distance_layer_.resize(BATTLEMAP_COORD_COUNT);
+    battle_scene_ = b;
 }
 
 BattleActionMenu::~BattleActionMenu()
 {
-    delete distance_layer_;
 }
 
 void BattleActionMenu::setRole(Role* r)
@@ -352,9 +351,9 @@ int BattleActionMenu::autoSelect(Role* role)
 //计算距离
 void BattleActionMenu::calDistanceLayer(int x, int y, int max_step /*=64*/)
 {
-    distance_layer_->setAll(max_step + 1);
+    distance_layer_.setAll(max_step + 1);
     std::vector<Point> cal_stack;
-    distance_layer_->data(x, y) = 0;
+    distance_layer_.data(x, y) = 0;
     cal_stack.push_back({ x, y });
     int count = 0;
     int step = 0;
@@ -364,21 +363,21 @@ void BattleActionMenu::calDistanceLayer(int x, int y, int max_step /*=64*/)
         auto check_next = [&](Point p1) -> void
         {
             //未计算过且可以走的格子参与下一步的计算
-            if (distance_layer_->data(p1.x, p1.y) == max_step + 1 && battle_scene_->canWalk(p1.x, p1.y))
+            if (distance_layer_.data(p1.x, p1.y) == max_step + 1 && battle_scene_->canWalk(p1.x, p1.y))
             {
-                distance_layer_->data(p1.x, p1.y) = step + 1;
+                distance_layer_.data(p1.x, p1.y) = step + 1;
                 cal_stack_next.push_back(p1);
                 count++;
             }
         };
         for (auto p : cal_stack)
         {
-            distance_layer_->data(p.x, p.y) = step;
+            distance_layer_.data(p.x, p.y) = step;
             check_next({ p.x - 1, p.y });
             check_next({ p.x + 1, p.y });
             check_next({ p.x, p.y - 1 });
             check_next({ p.x, p.y + 1 });
-            if (count >= distance_layer_->squareSize())
+            if (count >= distance_layer_.squareSize())
             {
                 break;
             }    //最多计算次数，避免死掉
@@ -429,7 +428,7 @@ void BattleActionMenu::getNearestPosition(int x0, int y0, int& x, int& y)
         {
             if (battle_scene_->canSelect(ix, iy))
             {
-                double cur_dis = distance_layer_->data(ix, iy) + rand.rand();
+                double cur_dis = distance_layer_.data(ix, iy) + rand.rand();
                 if (cur_dis < min_dis)
                 {
                     min_dis = cur_dis;
@@ -596,10 +595,8 @@ std::vector<Item*> BattleItemMenu::getAvaliableItems()
 
 std::vector<Item*> BattleItemMenu::getAvaliableItems(Role* role, int type)
 {
-    auto item_menu = new BattleItemMenu();
-    item_menu->setRole(role);
-    item_menu->setForceItemType(type);
-    auto items = item_menu->getAvaliableItems();
-    delete item_menu;
-    return items;
+    BattleItemMenu item_menu;
+    item_menu.setRole(role);
+    item_menu.setForceItemType(type);
+    return item_menu.getAvaliableItems();
 }

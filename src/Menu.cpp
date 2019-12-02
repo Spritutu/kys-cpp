@@ -43,7 +43,8 @@ void Menu::dealEvent(BP_Event& e)
             setAllChildState(Normal);
             if (all_normal)
             {
-                if (!childs_[active_child_]->getVisible())    //当前的如果不显示，则找第一个
+                //当前的如果不显示，则找第一个
+                if (active_child_ < childs_.size() && !childs_[active_child_]->getVisible())
                 {
                     active_child_ = findFristVisibleChild();
                 }
@@ -126,8 +127,7 @@ bool Menu::checkAllNormal()
 //    }
 //}
 
-MenuText::MenuText(std::vector<std::string> items)
-    : MenuText()
+MenuText::MenuText(std::vector<std::string> items) : MenuText()
 {
     setStrings(items);
 }
@@ -145,9 +145,9 @@ void MenuText::setStrings(std::vector<std::string> strings)
         {
             len = str.length();
         }
-        auto b = new Button();
-        b->setText(str);
+        auto b = std::make_shared<Button>();
         addChild(b, 0, i * 25);
+        b->setText(str);
         i++;
     }
     w_ = 10 * len;

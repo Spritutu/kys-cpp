@@ -4,7 +4,6 @@
 #include <windows.h>
 #pragma comment(lib, "user32.lib")
 #endif
-#include <cmath>
 
 Engine::Engine()
 {
@@ -75,7 +74,7 @@ void Engine::destroy()
     destroyAssistTexture();
     SDL_DestroyRenderer(renderer_);
     SDL_DestroyWindow(window_);
-#if defined(_WIN32) && defined(_TINYPOT)
+#if defined(_WIN32) && defined(WITH_SMALLPOT)
     PotDestory(tinypot_);
 #endif
     SDL_Quit();
@@ -100,7 +99,7 @@ BP_Texture* Engine::createSquareTexture(int size)
     {
         for (y = 0; y < d; y++)
         {
-            a = 100 + 150 * cos(M_PI * (1.0 * y / d - 0.5));
+            a = 100 + 150 * cos(3.14159265358979323846 * (1.0 * y / d - 0.5));
             auto c = 0x00ffffff | (a << 24);
             SDL_FillRect(square_s, &r, c);
             /*if ((x - d / 2)*(x - d / 2) + (y - d / 2)*(y - d / 2) < (d / 2) * (d / 2))
@@ -129,38 +128,6 @@ BP_Texture* Engine::createTextTexture(const std::string& fontname, const std::st
     SDL_FreeSurface(text_s);
     TTF_CloseFont(font);
     return text_t;
-}
-
-//此处仅接受utf8
-void Engine::drawText(const std::string& fontname, std::string& text, int size, int x, int y, uint8_t alpha, int align, BP_Color c)
-{
-    if (alpha == 0)
-    {
-        return;
-    }
-    auto text_t = createTextTexture(fontname, text, size, c);
-    if (!text_t)
-    {
-        return;
-    }
-    setTextureAlphaMod(text_t, alpha);
-    BP_Rect rect;
-    queryTexture(text_t, &rect.w, &rect.h);
-    rect.y = y;
-    switch (align)
-    {
-    case BP_ALIGN_LEFT:
-        rect.x = x;
-        break;
-    case BP_ALIGN_RIGHT:
-        rect.x = x - rect.w;
-        break;
-    case BP_ALIGN_MIDDLE:
-        rect.x = x - rect.w / 2;
-        break;
-    }
-    renderCopy(text_t, nullptr, &rect);
-    destroyTexture(text_t);
 }
 
 int Engine::init(void* handle)
@@ -212,7 +179,7 @@ int Engine::init(void* handle)
     square_ = createSquareTexture(100);
 
     printf("maximum width and height are: %d, %d\n", max_x_, max_y_);
-#if defined(_WIN32) && defined(_TINYPOT)
+#if defined(_WIN32) && defined(WITH_SMALLPOT)
     tinypot_ = PotCreateFromWindow(window_);
 #endif
     return 0;
@@ -255,7 +222,14 @@ void Engine::toggleFullscreen()
 
 BP_Texture* Engine::loadImage(const std::string& filename)
 {
+    //printf("%s", filename.c_str());
     return IMG_LoadTexture(renderer_, filename.c_str());
+}
+
+BP_Texture* Engine::loadImageFromMemory(const std::string& content)
+{
+    auto rw = SDL_RWFromConstMem(content.data(), content.size());
+    return IMG_LoadTextureTyped_RW(renderer_, rw, 1, "png");
 }
 
 bool Engine::setKeepRatio(bool b)
@@ -391,7 +365,7 @@ void Engine::setWindowSize(int w, int h)
     //renderPresent();
 }
 
-void Engine::resetWindowsPosition()
+void Engine::resetWindowPosition()
 {
     int x, y, w, h, x0, y0;
     getWindowSize(w, h);
@@ -450,7 +424,7 @@ int Engine::playVideo(std::string filename)
     {
         return 0;
     }
-#if defined(_WIN32) && defined(_TINYPOT)
+#if defined(_WIN32) && defined(WITH_SMALLPOT)
     return PotInputVideo(tinypot_, (char*)filename.c_str());
 #endif
     return 0;

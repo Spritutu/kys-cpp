@@ -39,15 +39,15 @@ protected:
     std::vector<Role*> friends_;         //开始就参战的我方角色，用来计算失败经验
     Role* acting_role_ = nullptr;        //当前正在行动中的角色
 
-    BattleActionMenu* battle_menu_;    //战斗行动菜单
-    BattleCursor* battle_cursor_;      //战斗时的光标
-    Head* head_self_;                  //头像
+    std::shared_ptr<BattleActionMenu> battle_menu_;    //战斗行动菜单
+    std::shared_ptr<BattleCursor> battle_cursor_;      //战斗时的光标
+    std::shared_ptr<Head> head_self_;                  //头像
 
     //地面层，建筑层，选择层（负值为不可选，0和正值为可选），效果层
-    MapSquareInt *earth_layer_, *building_layer_, *select_layer_, *effect_layer_;
+    MapSquareInt earth_layer_, building_layer_, select_layer_, effect_layer_;
 
     //角色层
-    MapSquare<Role*>* role_layer_;
+    MapSquare<Role*> role_layer_;
 
     int select_type_ = 0;    //0-其他，1-选移动目标，2-选行动目标（好像没被用到）
 
@@ -80,7 +80,7 @@ public:
     }
 
     const std::vector<Role*>& getBattleRoles() { return battle_roles_; }
-    MapSquare<Role*>*& getRoleLayer() { return role_layer_; }
+    MapSquare<Role*>* getRoleLayer() { return &role_layer_; }
     int selectX() { return select_x_; }
     int selectY() { return select_y_; }
 
@@ -109,7 +109,7 @@ public:
     virtual void calEffectLayer(int x, int y, int select_x, int select_y, Magic* m = nullptr, int level_index = 0);
 
     //所在坐标是否有效果
-    virtual bool haveEffect(int x, int y) { return effect_layer_->data(x, y) >= 0; }
+    virtual bool haveEffect(int x, int y) { return effect_layer_.data(x, y) >= 0; }
 
     //r2是不是在效果层里面，且会被r1的效果打中
     virtual bool inEffect(Role* r1, Role* r2);

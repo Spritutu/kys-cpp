@@ -6,11 +6,12 @@
 
 #include <algorithm>
 #include <functional>
+#include <map>
 #include <string>
 #include <vector>
 
-#if defined(_WIN32) && defined(_TINYPOT)
-#include "tinypot/PotDll.h"
+#if defined(_WIN32) && defined(WITH_SMALLPOT)
+#include "PotDll.h"
 #endif
 
 //这里是底层部分，将SDL的函数均封装了一次
@@ -18,14 +19,14 @@
 
 //每个SDL的函数和结构通常仅出现一次，其余的均用已封的功能完成
 
-typedef std::function<void(uint8_t*, int)> AudioCallback;
-typedef SDL_Renderer BP_Renderer;
-typedef SDL_Window BP_Window;
-typedef SDL_Texture BP_Texture;
-typedef SDL_Rect BP_Rect;
-typedef SDL_Color BP_Color;
-typedef SDL_Keycode BP_Keycode;
-typedef SDL_Surface BP_Surface;
+using AudioCallback = std::function<void(uint8_t*, int)>;
+using BP_Renderer = SDL_Renderer;
+using BP_Window = SDL_Window;
+using BP_Texture = SDL_Texture;
+using BP_Rect = SDL_Rect;
+using BP_Color = SDL_Color;
+using BP_Keycode = SDL_Keycode;
+using BP_Surface = SDL_Surface;
 
 enum BP_Align
 {
@@ -42,9 +43,9 @@ enum BP_Align
 #define AMASK (0xff000000)
 
 //声音类型在其他文件中未使用
-typedef SDL_AudioSpec BP_AudioSpec;
+using BP_AudioSpec = SDL_AudioSpec;
 //这里直接使用SDL的事件结构，如果更换底层需重新实现一套相同的
-typedef SDL_Event BP_Event;
+using BP_Event = SDL_Event;
 
 class Engine
 {
@@ -84,6 +85,7 @@ public:
     int getWindowHeight();
     int getMaxWindowWidth() { return max_x_ - min_x_; }
     int getMaxWindowHeight() { return max_y_ - min_y_; }
+    void getWindowPosition(int& x, int& y) { SDL_GetWindowPosition(window_, &x, &y); }
     void setWindowSize(int w, int h);
     void setStartWindowSize(int w, int h)
     {
@@ -130,10 +132,11 @@ public:
     bool isFullScreen();
     void toggleFullscreen();
     BP_Texture* loadImage(const std::string& filename);
+    BP_Texture* loadImageFromMemory(const std::string& content);
     bool setKeepRatio(bool b);
     BP_Texture* transBitmapToTexture(const uint8_t* src, uint32_t color, int w, int h, int stride);
     double setRotation(double r) { return rotation_ = r; }
-    void resetWindowsPosition();
+    void resetWindowPosition();
     void setRatio(double x, double y)
     {
         ratio_x_ = x;
@@ -180,7 +183,6 @@ private:
 public:
     BP_Texture* createSquareTexture(int size);
     BP_Texture* createTextTexture(const std::string& fontname, const std::string& text, int size, BP_Color c);
-    void drawText(const std::string& fontname, std::string& text, int size, int x, int y, uint8_t alpha, int align, BP_Color c);
     int showMessage(const std::string& content);
     void renderSquareTexture(BP_Rect* rect, BP_Color color, uint8_t alpha);
 

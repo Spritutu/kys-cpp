@@ -6,42 +6,37 @@
 UI::UI()
 {
     //注意，此处约定childs_[0]为子UI，创建好对应的指针，需要显示哪个赋值到childs_[0]即可
-    ui_status_ = new UIStatus();
-    ui_item_ = new UIItem();
-    ui_system_ = new UISystem();
+    ui_status_ = std::make_shared<UIStatus>();
+    ui_item_ = std::make_shared<UIItem>();
+    ui_system_ = std::make_shared<UISystem>();
     ui_status_->setPosition(300, 0);
     ui_item_->setPosition(300, 0);
     ui_system_->setPosition(300, 0);
     addChild(ui_status_);
 
     //貌似这里不能直接调用其他单例，静态量的创建顺序不确定
-    button_status_ = new Button("title", 122);
-    button_item_ = new Button("title", 124);
-    button_system_ = new Button("title", 125);
+    button_status_ = std::make_shared<Button>();
+    button_status_->setTexture("title", 122);
+    button_item_ = std::make_shared<Button>();
+    button_item_->setTexture("title", 124);
+    button_system_ = std::make_shared<Button>();
+    button_system_->setTexture("title", 125);
     addChild(button_status_, 10, 10);
     addChild(button_item_, 90, 10);
     addChild(button_system_, 170, 10);
-    buttons_.push_back(button_status_);
-    buttons_.push_back(button_item_);
-    buttons_.push_back(button_system_);
-
-    heads_ = new Menu();
+    heads_ = std::make_shared<Menu>();
+    addChild(heads_);
     for (int i = 0; i < TEAMMATE_COUNT; i++)
     {
-        auto h = new Head();
-        heads_->addChild(h, 20, 60 + i * 90);
+        heads_->addChild(std::make_shared<Head>(), 20, 60 + i * 90);
     }
     heads_->getChild(0)->setState(Pass);
-    addChild(heads_);
+    //addChild(heads_);
     result_ = -1;    //非负：物品id，负数：其他情况，再定
 }
 
 UI::~UI()
 {
-    childs_[0] = nullptr;
-    delete ui_status_;
-    delete ui_item_;
-    delete ui_system_;
 }
 
 void UI::onEntrance()
@@ -57,7 +52,7 @@ void UI::dealEvent(BP_Event& e)
 {
     for (int i = 0; i < TEAMMATE_COUNT; i++)
     {
-        auto head = (Head*)heads_->getChild(i);
+        std::shared_ptr<Head> head = std::dynamic_pointer_cast<Head>(heads_->getChild(i));
         auto role = Save::getInstance()->getTeamMate(i);
         head->setRole(role);
         if (role == nullptr)
@@ -94,7 +89,7 @@ void UI::dealEvent(BP_Event& e)
     {
         heads_->getChild(current_head_)->setState(Pass);
     }
-    buttons_[current_button_]->setState(Pass);
+    childs_[current_button_]->setState(Pass);
 
     //快捷键切换
     if (e.type == BP_KEYUP)
@@ -159,16 +154,16 @@ void UI::onPressedOK()
     if (button_status_->getState() == Press)
     {
         childs_[0] = ui_status_;
-        current_button_ = 0;
+        current_button_ = button_status_->getTag();
     }
     if (button_item_->getState() == Press)
     {
         childs_[0] = ui_item_;
-        current_button_ = 1;
+        current_button_ = button_item_->getTag();
     }
     if (button_system_->getState() == Press)
     {
         childs_[0] = ui_system_;
-        current_button_ = 2;
+        current_button_ = button_system_->getTag();
     }
 }
